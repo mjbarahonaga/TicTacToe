@@ -2648,7 +2648,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Hard
+  m_text: Impossible
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -2754,9 +2754,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e44c8f7c5d7b6a42bcaf901d6bca296, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _isPlayerTurn: 0
   _gridSize: 3
-  playerFigure: 1
+  humanFigure: 1
   _xPrefab: {fileID: 7414302633889650939, guid: a450fd114cd7d1a478caad21517a2ac9,
     type: 3}
   _oPrefab: {fileID: 7864686030223180920, guid: f4dc0bc95f6576a40a4d10ac0b905c6a,

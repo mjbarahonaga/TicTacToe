@@ -11,6 +11,7 @@ public class ClickTrigger : MonoBehaviour
 
 	[SerializeField]
 	private bool canClick;
+    public bool CanClick { get => canClick; set => canClick = value; }
 
     private void OnValidate()
     {
@@ -30,21 +31,21 @@ public class ClickTrigger : MonoBehaviour
 	}
 
 	private void SetInputEndabled(bool val){
-		canClick = val;
+		CanClick = val;
 	}
 
 	private void AddReference()
 	{
 		_tttManager.RegisterTransform(_myCoordX, _myCoordY, this);
-		canClick = true;
+		CanClick = true;
 	}
 
 	private void OnMouseDown()
 	{
-		if(canClick && _tttManager.IsPlayerTurn)
+		if(CanClick && _tttManager.IsPlayerTurn)
 		{
 			_tttManager.Selects(_myCoordX, _myCoordY,TicTacToePlayer.human);
-			canClick = false;
+			CanClick = false;
 		}
 	}
 }

@@ -24,7 +24,6 @@ public class TicTacToeManager : MonoBehaviour
 
 	TicTacToeFigure[,] boardState = new TicTacToeFigure[3,3];
 
-	[SerializeField]
 	private bool _isPlayerTurn;
 	public bool IsPlayerTurn { get => _isPlayerTurn; set => _isPlayerTurn = value; }
 
@@ -32,7 +31,7 @@ public class TicTacToeManager : MonoBehaviour
 	private int _gridSize = 3;
 	
 	[SerializeField]
-	private TicTacToeFigure playerFigure = TicTacToeFigure.cross;
+	private TicTacToeFigure humanFigure = TicTacToeFigure.cross;
 	TicTacToeFigure aiFigure = TicTacToeFigure.circle;
 
 	[SerializeField]
@@ -50,8 +49,27 @@ public class TicTacToeManager : MonoBehaviour
 	
 	private List<GameObject> VisualObjects = new List<GameObject>();
 
-    
-    private void Awake()
+	private void OnValidate()
+	{
+		Utils.ValidationUtility.SafeOnValidate(() =>
+		{
+			if (this == null) return;
+
+			if(humanFigure == TicTacToeFigure.cross)
+            {
+				_isPlayerTurn = true;
+				aiFigure = TicTacToeFigure.circle;
+            }
+            else
+            {
+				_isPlayerTurn = false;
+				aiFigure = TicTacToeFigure.cross;
+			}
+
+		});
+	}
+
+	private void Awake()
 	{
 		if(onPlayerWin == null){
 			onPlayerWin = new WinnerEvent();
@@ -68,8 +86,6 @@ public class TicTacToeManager : MonoBehaviour
 		
 	}
 
-
-
     public void RegisterTransform(int myCoordX, int myCoordY, ClickTrigger clickTrigger)
 	{
 		_triggers[myCoordX, myCoordY] = clickTrigger;
@@ -79,7 +95,7 @@ public class TicTacToeManager : MonoBehaviour
 	{
 		_triggers = new ClickTrigger[3,3];
 		onGameStarted.Invoke();
-		if (IsPlayerTurn == false) { StartCoroutine(TurnAI()); }
+		if (IsPlayerTurn == false) { StartCoroutine(TurnIA()); }
 	}
 
 	public void Selects(int coordX, int coordY, TicTacToePlayer whoSelects){
@@ -87,7 +103,7 @@ public class TicTacToeManager : MonoBehaviour
 		TicTacToeFigure figure = GetCurrentFigure(whoSelects);
 		SetVisual(coordX, coordY, figure);
 
-		GameState currentBoardState = CheckBoard(figure);
+		GameState currentBoardState = CheckBoard();
 		if (currentBoardState != GameState.none) 
 		{ 
 			onPlayerWin?.Invoke((int)currentBoardState);
@@ -101,37 +117,26 @@ public class TicTacToeManager : MonoBehaviour
 		else
 		{
 			IsPlayerTurn = false;
-			StartCoroutine(TurnAI());
+			StartCoroutine(TurnIA());
+			
 		}
 	}
 
-	public IEnumerator TurnAI()
+	public IEnumerator TurnIA()
     {
 		UnityEngine.Random.InitState(System.Environment.TickCount);
-		yield return new WaitForSeconds(Random.Range(0.5f, 1.5f));	// Let it think a bit :)
+		yield return new WaitForSeconds(Random.Range(0.5f, 1.0f));	// Let it think a bit :)
 
-        for (int i = 0; i < _gridSize; i++)
-        {
-            for (int j = 0; j < _gridSize; j++)
-            {
-				if (boardState[i, j] == TicTacToeFigure.none)
-				{
 
-					Selects(i, j, TicTacToePlayer.AI);
-					yield break;
-				}
-            }
-        }
-		yield return null;
-		// Logic
-		// Selects(,,TicTacToePlayer.AI);
+		Vector2Int move = MoveAi();
+		Selects(move.x, move.y, TicTacToePlayer.AI);
 	}
 
 	private TicTacToeFigure GetCurrentFigure(TicTacToePlayer whoSelects)
 	{
 		switch (whoSelects)
 		{
-			case TicTacToePlayer.human: return playerFigure;
+			case TicTacToePlayer.human: return humanFigure;
 			case TicTacToePlayer.AI:	return aiFigure;
 		}
 		return TicTacToeFigure.none;
@@ -166,6 +171,9 @@ public class TicTacToeManager : MonoBehaviour
 
 	private void SetVisual(int coordX, int coordY, TicTacToeFigure targetState)
 	{
+		_triggers[coordX, coordY].CanClick = false;
+		boardState[coordX, coordY] = targetState;
+
 		VisualObjects.Add(
 			Instantiate(
 				targetState == TicTacToeFigure.circle ? _oPrefab : _xPrefab,
@@ -173,51 +181,164 @@ public class TicTacToeManager : MonoBehaviour
 				Quaternion.identity
 			)
 		);
-
-		boardState[coordX, coordY] = targetState;
     }
 
-	private GameState CheckBoard(TicTacToeFigure figure)
+	private GameState CheckBoard()
     {
 		// Horizontal
 		int equals = 0;
-        for (int i = 0; i < _gridSize; ++i)
+		TicTacToeFigure currentFigure = TicTacToeFigure.none;
+		TicTacToeFigure winner = TicTacToeFigure.none;
+		for (int i = 0; i < _gridSize; ++i)
         {
 			equals = 0;
-            for (int j = 0; j < _gridSize; ++j)
+			currentFigure = boardState[i, 0];
+
+			for (int j = 0; j < _gridSize; ++j)
             {
-				equals += boardState[j, i] == figure ? 1 : 0;
+				if(boardState[i, j] == currentFigure)
+                {
+					++equals;
+					currentFigure = boardState[i, j];
+				}
 			}
-			if (equals == _gridSize) return playerFigure == figure ? GameState.winsHuman : GameState.winsAi;
+			if (equals == _gridSize && currentFigure != TicTacToeFigure.none) winner = currentFigure;
 		}
 
 		// Vertical
 		for (int i = 0; i < _gridSize; ++i)
 		{
 			equals = 0;
+			currentFigure = boardState[0, i];
 			for (int j = 0; j < _gridSize; ++j)
 			{
-				equals += boardState[i, j] == figure ? 1 : 0;
+				if (boardState[j, i] == currentFigure)
+				{
+					++equals;
+					currentFigure = boardState[j, i];
+				}
 			}
-			if (equals == _gridSize) return playerFigure == figure ? GameState.winsHuman : GameState.winsAi;
+			if (equals == _gridSize && currentFigure != TicTacToeFigure.none) winner = currentFigure;
 		}
 
 		// Diagonal
 		equals = 0;
+		currentFigure = boardState[0, 0];
 		for (int i = 0; i < _gridSize; ++i)
 		{
-			equals += boardState[i, i] == figure ? 1 : 0;
+			if(currentFigure == boardState[i, i])
+            {
+				++equals;
+				currentFigure = boardState[i, i];
+			}
 		}
-		if (equals == _gridSize) return playerFigure == figure ? GameState.winsHuman : GameState.winsAi;
+		if (equals == _gridSize && currentFigure != TicTacToeFigure.none) winner = currentFigure;
 
 		equals = 0;
+		currentFigure = boardState[_gridSize - 1, 0];
 		for (int i = 0; i < _gridSize; ++i)
 		{
-			equals += boardState[(_gridSize - 1) - i, i] == figure ? 1 : 0;
+			if (currentFigure == boardState[(_gridSize - 1) - i, i])
+			{
+				++equals;
+				currentFigure = boardState[(_gridSize - 1) - i, i];
+			}
 		}
-		if (equals == _gridSize) return playerFigure == figure ? GameState.winsHuman : GameState.winsAi;
+		if (equals == _gridSize && currentFigure != TicTacToeFigure.none) winner = currentFigure;
 
-		if (VisualObjects.Count == 9) return GameState.tie;
-		return GameState.none;	
+		if (GetEmptyPlacesBoard() == 0 && winner == TicTacToeFigure.none) return GameState.tie;
+		return humanFigure == winner ? GameState.winsHuman : aiFigure == winner ? GameState.winsAi : GameState.none ;	
+    }
+
+	private int GetEmptyPlacesBoard()
+    {
+		int empties = 0;
+        for (int i = 0; i < _gridSize; i++)
+        {
+            for (int j = 0; j < _gridSize; j++)
+            {
+				empties += boardState[i, j] == TicTacToeFigure.none ? 1 : 0;
+            }
+        }
+		return empties;
+    }
+
+	private Vector2Int MoveAi()
+	{
+		Vector2Int move = new Vector2Int(0, 0);
+		// _aiLevel == 0 ? easy : hard
+		int depth = _aiLevel == 0 ? Mathf.Clamp(GetEmptyPlacesBoard() - 3, 0, _gridSize * _gridSize): GetEmptyPlacesBoard();
+
+		int bestScore = int.MinValue;
+		for (int i = 0; i < _gridSize; i++)
+		{
+			for (int j = 0; j < _gridSize; j++)
+			{
+				if (boardState[i, j] == TicTacToeFigure.none)
+				{
+					boardState[i, j] = aiFigure;
+					int score = MiniMax(depth - 1, false);
+					boardState[i, j] = TicTacToeFigure.none;
+					if(score > bestScore)
+                    {
+						bestScore = score;
+						move.Set(i, j);
+                    }
+				}
+			}
+		}
+
+		return move;
+    }
+
+
+	private int MiniMax(int depth, bool isMaximizing)
+    {
+		GameState state = CheckBoard();
+		if (state == GameState.winsAi || state == GameState.winsHuman) return state == GameState.winsAi ? 1 : -1;
+		if (depth <= 0 ) {
+			
+			return state == GameState.winsAi ? 1 : state == GameState.winsHuman ? -1 : 0;
+		}
+		int bestScore;
+
+		if (isMaximizing)
+        {
+			bestScore = int.MinValue;
+			for (int i = 0; i < _gridSize; i++)
+			{
+				for (int j = 0; j < _gridSize; j++)
+				{
+					if(boardState[i,j] == TicTacToeFigure.none)
+                    {
+						boardState[i, j] = aiFigure;
+						int score = MiniMax(depth - 1, false);
+						boardState[i, j] = TicTacToeFigure.none;
+						bestScore = Mathf.Max(bestScore, score);
+					}
+				}
+			}
+			return bestScore;
+        }
+        else
+        {
+			bestScore = int.MaxValue;
+
+			for (int i = 0; i < _gridSize; i++)
+			{
+				for (int j = 0; j < _gridSize; j++)
+				{
+					if (boardState[i, j] == TicTacToeFigure.none)
+					{
+						boardState[i, j] = humanFigure;
+						int score = MiniMax(depth - 1, true);
+						boardState[i, j] = TicTacToeFigure.none;
+						bestScore = Mathf.Min(bestScore, score);
+					}
+				}
+			}
+			return bestScore;
+		}
+       
     }
 }
