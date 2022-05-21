@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class ClickTrigger : MonoBehaviour
 {
-	TicTacToeAI _ai;
+	[SerializeField] TicTacToeManager _tttManager;
 
 	[SerializeField]
 	private int _myCoordX = 0;
@@ -14,16 +12,21 @@ public class ClickTrigger : MonoBehaviour
 	[SerializeField]
 	private bool canClick;
 
-	private void Awake()
-	{
-		_ai = FindObjectOfType<TicTacToeAI>();
-	}
+    private void OnValidate()
+    {
+		Utils.ValidationUtility.SafeOnValidate(() =>
+		{
+			if (this == null) return;
 
-	private void Start(){
+			if(_tttManager == null) _tttManager = FindObjectOfType<TicTacToeManager>();
 
-		_ai.onGameStarted.AddListener(AddReference);
-		_ai.onGameStarted.AddListener(() => SetInputEndabled(true));
-		_ai.onPlayerWin.AddListener((win) => SetInputEndabled(false));
+		});
+    }
+
+	private void Awake(){
+
+		_tttManager.onGameStarted.AddListener(AddReference);
+		_tttManager.onGameStarted.AddListener(() => SetInputEndabled(true));
 	}
 
 	private void SetInputEndabled(bool val){
@@ -32,14 +35,16 @@ public class ClickTrigger : MonoBehaviour
 
 	private void AddReference()
 	{
-		_ai.RegisterTransform(_myCoordX, _myCoordY, this);
+		_tttManager.RegisterTransform(_myCoordX, _myCoordY, this);
 		canClick = true;
 	}
 
 	private void OnMouseDown()
 	{
-		if(canClick){
-			_ai.PlayerSelects(_myCoordX, _myCoordY);
+		if(canClick && _tttManager.IsPlayerTurn)
+		{
+			_tttManager.Selects(_myCoordX, _myCoordY,TicTacToePlayer.human);
+			canClick = false;
 		}
 	}
 }
